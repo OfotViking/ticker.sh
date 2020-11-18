@@ -6,11 +6,18 @@ LANG=C
 LC_NUMERIC=C
 
 SYMBOLS=("$@")
+date=$(date +%s)
 
 CONFIG=~/.config/ticker.conf
+DB="$(dirname $CONFIG)"/ticker.db
 
 if ! $(type jq >/dev/null 2>&1); then
   echo "'jq' is not in the PATH. (See: https://stedolan.github.io/jq/)"
+  exit 1
+fi
+
+if ! $(type sqlite >/dev/null 2>&1); then
+  echo "'sqlite' is not in the PATH. (See: https://www.sqlite.org/download.html)"
   exit 1
 fi
 
@@ -26,6 +33,11 @@ if [ "$1" == "--make-config" ]; then
     echo "Error: config already exists ($CONFIG)"
     exit 1
   fi
+fi
+
+if [ ! -f $DB ]; then
+  echo "Creating DB"
+  sqlite $DB "CREATE TABLE history (date int(30), symbol varchar(30), value varchar(30));"
 fi
 
 if [ -z "$SYMBOLS" ] && [ ! -f $CONFIG ]; then
@@ -115,4 +127,7 @@ for symbol in $(
     printf " %-s" "$nonRegularMarketSign" $(printf "%15s" $name)
     printf "\n"
   fi
+
+  sqlite $DB "INSERT INTO history VALUES ('$date','$symbol','$price');"
+
 done
